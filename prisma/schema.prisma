@@ -1,0 +1,870 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Invoice {
+  id               String             @id @default(uuid())
+  invoiceId        String             @unique @default(dbgenerated("concat('A', lpad((nextval('invoice_seq'::regclass))::text, 4, '0'::text))"))
+  caseId           String             @db.VarChar(255)
+  dentistId        String             @db.VarChar(255)
+  inv_date         DateTime?
+  due_date         DateTime?
+  balance          Float
+  total            Float
+  subTotal         Float
+  taxes            Float
+  totalPaid        Float
+  status           InvoiceStatusType  @default(OPEN)
+  mergedDate       DateTime?
+  deletedAt        DateTime?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  discounts        Float?             @default(0)
+  notes            String?            @db.VarChar(255)
+  case             Case               @relation(fields: [caseId], references: [id])
+  dentist          Dentist            @relation(fields: [dentistId], references: [id])
+  InvoiceItem      InvoiceItem[]
+  PaymentInvoice   PaymentInvoice[]
+  StatementInvoice StatementInvoice[]
+}
+
+model InvoiceItem {
+  id           String    @id @default(uuid())
+  invoiceId    String    @db.VarChar(255)
+  itemId       String?   @db.VarChar(255)
+  name         String?   @db.VarChar(255)
+  description  String?   @db.VarChar(255)
+  qty          Int?      @default(0)
+  unitPrice    Float?
+  price        Float?
+  sort         Int?
+  discounts    Float?
+  discountType String?   @db.VarChar(255)
+  deletedAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  level        String?   @db.VarChar(255)
+  caseItemId   String?   @unique @db.VarChar(65000)
+  CasseItem    CaseItem? @relation(fields: [caseItemId], references: [id], onDelete: Cascade)
+  invoice      Invoice   @relation(fields: [invoiceId], references: [id])
+  item         Item?     @relation(fields: [itemId], references: [id])
+}
+
+model Item {
+  id               String             @id @default(uuid())
+  name             String
+  designGroupId    String?            @db.VarChar(255)
+  sort             Int?
+  salesTax         Boolean            @default(true)
+  allowDiscount    Boolean            @default(true)
+  active           Boolean            @default(true)
+  description      String?            @db.VarChar(255)
+  deletedAt        DateTime?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  classicPrice     Float?
+  elitePrice       Float?
+  plusPrice        Float?
+  invoiceItems     InvoiceItem[]
+  designGroup      DesignGroup?       @relation(fields: [designGroupId], references: [id])
+  ManufacturePrice ManufacturePrice[]
+  materials        MaterialsItem[]
+  CaseItem         CaseItem[]
+}
+
+model MaterialsItem {
+  id         String    @id @default(uuid())
+  itemId     String    @db.VarChar(255)
+  materialId String    @db.VarChar(255)
+  deletedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  item       Item      @relation(fields: [itemId], references: [id])
+  material   Materials @relation(fields: [materialId], references: [id])
+}
+
+model Materials {
+  id             String          @id @default(uuid())
+  name           String
+  deletedAt      DateTime?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  manufactureId  String?
+  Manufacture    Manufacture?    @relation(fields: [manufactureId], references: [id])
+  materialsitems MaterialsItem[]
+}
+
+model DesignGroup {
+  id                       String                     @id @default(uuid())
+  name                     String                     @db.VarChar(255)
+  deletedAt                DateTime?
+  createdAt                DateTime                   @default(now())
+  updatedAt                DateTime                   @updatedAt
+  active                   Boolean?                   @default(true)
+  item                     Item[]
+  ProductType_DesignGroups ProductType_DesignGroups[]
+}
+
+model Role {
+  id          String       @id @default(uuid())
+  name        String       @db.VarChar(255)
+  deletedAt   DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  permissions Permission[]
+  users       User[]
+  Modules     Modules[]
+}
+
+model Permission {
+  id        String    @id @default(uuid())
+  read      Boolean   @default(false)
+  write     Boolean   @default(false)
+  remove    Boolean   @default(false)
+  update    Boolean   @default(false)
+  roleId    String?   @db.VarChar(255)
+  modulesId String?   @db.VarChar(255)
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  role      Role?     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  Modules   Modules?  @relation(fields: [modulesId], references: [id])
+}
+
+model Modules {
+  id         String       @id @default(uuid())
+  name       String       @db.VarChar(255)
+  deletedAt  DateTime?
+  createdAt  DateTime?    @default(now())
+  updatedAt  DateTime?    @updatedAt
+  Role       Role[]
+  Permission Permission[]
+}
+
+model User {
+  id                       String              @id @default(uuid())
+  roleId                   String              @db.VarChar(255)
+  staffId                  String?             @db.VarChar(255)
+  email                    String              @unique @db.VarChar(255)
+  password                 String?             @db.VarChar(255)
+  rememberToken            String?             @db.VarChar(255)
+  firstName                String?             @db.VarChar(255)
+  lastName                 String?             @db.VarChar(255)
+  modelType                ModelType           @default(USER)
+  email_verified_at        DateTime?
+  createdAt                DateTime            @default(now())
+  updatedAt                DateTime            @updatedAt
+  deletedAt                DateTime?
+  modelId                  String?             @db.VarChar(255)
+  phone                    String?             @db.VarChar(255)
+  googleAuthQr             String?             @db.VarChar(65535)
+  googleAuthSecret         String?             @db.VarChar(500)
+  twoFactorAuth            Boolean?            @default(false)
+  degree                   String?             @db.VarChar(255)
+  licenseNumber            String?             @db.VarChar(255)
+  status                   User_Status?        @default(ACTIVE)
+  Address                  Address[]
+  caseInstructionCreatedBy CaseInstruction[]   @relation("caseInstructionCreatedBy")
+  caseInstructionUpdatedBy CaseInstruction[]   @relation("caseInstructionUpdatedBy")
+  caseNotesCreatedBy       CaseNotes[]         @relation("caseNotesCreatedBy")
+  caseNotesUpdatedBy       CaseNotes[]         @relation("caseNotesUpdatedBy")
+  role                     Role                @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  Case                     Case[]
+  Preference_doctor        Preference_doctor[]
+  creditNoteCreatedBy      CreditNote[]        @relation("creditNoteCreatedBy")
+  creditNoteUpdatedBy      CreditNote[]        @relation("creditNoteUpdatedBy")
+  debitNoteCreatedBy       DebitNote[]         @relation("debitNoteCreatedBy")
+  debitNoteUpdatedBy       DebitNote[]         @relation("debitNoteUpdatedBy")
+}
+
+model Address {
+  id         String    @id @default(uuid())
+  addressOne String?   @db.VarChar(255)
+  addressTwo String?   @db.VarChar(255)
+  city       String?   @db.VarChar(255)
+  state      String?   @db.VarChar(255)
+  country    String?   @db.VarChar(255)
+  postalCode String?   @db.VarChar(255)
+  userId     String    @db.VarChar(255)
+  createdAt  DateTime  @default(now())
+  deletedAt  DateTime?
+  updatedAt  DateTime  @updatedAt
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Payment {
+  id             String           @id @default(uuid())
+  mergePaymentId String?
+  amount         Float
+  mergeAmount    Float?
+  memo           String?
+  deletedAt      DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  dentistId      String
+  paymentDate    DateTime?
+  paymentMethod  String
+  status         String?          @db.VarChar(255)
+  dentist        Dentist          @relation(fields: [dentistId], references: [id])
+  paymentInvoice PaymentInvoice[]
+  DebitNote      DebitNote[]
+  CreditNote     CreditNote[]
+}
+
+model PaymentInvoice {
+  id        String    @id @default(uuid())
+  paymentId String    @db.VarChar(255)
+  invoiceId String    @db.VarChar(255)
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  amount    Float
+  invoice   Invoice   @relation(fields: [invoiceId], references: [id])
+  payment   Payment   @relation(fields: [paymentId], references: [id])
+}
+
+model Dentist {
+  id                           String                @id @default(uuid())
+  accountId                    String                @unique @db.VarChar(255)
+  companyName                  String?               @db.VarChar(255)
+  phone                        String?               @db.VarChar(255)
+  addressOne                   String?               @db.VarChar(255)
+  addressTwo                   String?               @db.VarChar(255)
+  city                         String?               @db.VarChar(255)
+  state                        String?               @db.VarChar(255)
+  province                     String?               @db.VarChar(255)
+  country                      String?               @db.VarChar(255)
+  postalCode                   String?               @db.VarChar(255)
+  billingSameAsRegisterAddress Boolean               @default(false)
+  billingAddressOne            String?               @db.VarChar(255)
+  billingAddressTwo            String?               @db.VarChar(255)
+  billingCity                  String?               @db.VarChar(255)
+  billingState                 String?               @db.VarChar(255)
+  billingProvince              String?               @db.VarChar(255)
+  billingCountry               String?               @db.VarChar(255)
+  billingPostalCode            Int?
+  email                        String?               @unique @db.VarChar(255)
+  billingEmail                 String?               @db.VarChar(255)
+  netTerms                     Int?
+  shippingAddressSameAsAddress shippingAddressModel?
+  shippingAddressOne           String?               @db.VarChar(255)
+  shippingAddressTwo           String?               @db.VarChar(255)
+  shippingCity                 String?               @db.VarChar(255)
+  shippingState                String?               @db.VarChar(255)
+  shippingProvince             String?               @db.VarChar(255)
+  shippingCountry              String?               @db.VarChar(255)
+  shippingPostalCode           Int?
+  creditBalance                Float?
+  sundayOfficeHours            String?               @db.VarChar(255)
+  mondayOfficeHours            String?               @db.VarChar(255)
+  tuesdayOfficeHours           String?               @db.VarChar(255)
+  wednesdayOfficeHours         String?               @db.VarChar(255)
+  thursdayOfficeHours          String?               @db.VarChar(255)
+  fridayOfficeHours            String?               @db.VarChar(255)
+  saturdayOfficeHours          String?               @db.VarChar(255)
+  licenseNumber                String?               @db.VarChar(255)
+  clinicInformation            String?               @db.VarChar(255)
+  contactPersonName            String?               @db.VarChar(255)
+  deletedAt                    DateTime?
+  createdAt                    DateTime              @default(now())
+  updatedAt                    DateTime              @updatedAt
+  stripeCustomerId             String?               @db.VarChar(255)
+  dentistStatus                Dentist_Status?       @default(ACTIVE)
+  shippingPreferenceChoice     String?               @db.VarChar(255)
+  Case                         Case[]
+  Invoice                      Invoice[]
+  Patient                      Patient[]
+  Payment                      Payment[]
+  Statement                    Statement[]
+  CaseMasseageCenter           CaseMasseageCenter[]
+  CreditNote                   CreditNote[]
+  DebitNote                    DebitNote[]
+  InternalNotes                InternalNotes[]
+}
+
+model InternalNotes {
+  id        String    @id @default(uuid())
+  dentistId String    @db.VarChar(255)
+  notes     String?   @db.VarChar(255)
+  createdAt DateTime? @default(now())
+  updatedAt DateTime?
+  deletedAt DateTime?
+  Dentist   Dentist   @relation(fields: [dentistId], references: [id])
+}
+
+model Pan {
+  id             String        @id @default(uuid())
+  panNumber      String        @unique
+  scheduleTypeId String?
+  scheduleType   ScheduleType? @relation(fields: [scheduleTypeId], references: [id])
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  deletedAt      DateTime?
+  Case           Case[]
+}
+
+model ScheduleType {
+  id                      String    @id @default(uuid())
+  name                    String?   @db.VarChar(255)
+  inTransitToManufacturer Int?
+  daysInLab               Int?
+  transitToDentalLab      Int?
+  transitToClient         Int?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+  deletedAt               DateTime?
+  panId                   String?
+  Pan                     Pan[]
+  Case                    Case[]
+}
+
+model Patient {
+  id          String             @id @default(uuid())
+  firstName   String             @db.VarChar(255)
+  lastName    String             @db.VarChar(255)
+  dateOfBirth DateTime?
+  age         String?            @db.VarChar(255)
+  gender      PatientGenderType? @default(MALE)
+  addressOne  String?            @db.VarChar(255)
+  addressTwo  String?            @db.VarChar(255)
+  city        String?            @db.VarChar(255)
+  state       String?            @db.VarChar(255)
+  province    String?            @db.VarChar(255)
+  country     String?            @db.VarChar(255)
+  postalCode  String?            @db.VarChar(255)
+  phonne      String?            @db.VarChar(255)
+  email       String?            @db.VarChar(255)
+  dentistId   String             @db.VarChar(255)
+  createdAt   DateTime?          @default(now())
+  updatedAt   DateTime?          @updatedAt
+  deletedAt   DateTime?
+  Case        Case[]
+  Dentist     Dentist            @relation(fields: [dentistId], references: [id])
+}
+
+model Case {
+  id                    String                  @id @default(uuid())
+  patientId             String?                 @db.VarChar(255)
+  dentistId             String                  @db.VarChar(255)
+  manufactureId         String?                 @db.VarChar(255)
+  doctorId              String?                 @db.VarChar(255)
+  onHoldDate            DateTime?
+  receivedDate          DateTime?
+  dueShipDate           DateTime?
+  dueDate               DateTime?
+  completedDate         DateTime?
+  flag                  String?                 @db.VarChar(255)
+  panNum                String?                 @db.VarChar(255)
+  reason                String?                 @db.VarChar(255)
+  manNotes              String?                 @db.VarChar(255)
+  createdBy             String                  @db.VarChar(255)
+  updatedBy             String                  @db.VarChar(255)
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime?               @updatedAt
+  deletedAt             DateTime?
+  barcodeData           String?                 @db.VarChar(65535)
+  caseId                String                  @unique @default(dbgenerated("lpad((nextval('case_seq'::regclass))::text, 4, '0'::text)"))
+  level                 String?                 @db.VarChar(255)
+  status                CaseStatus?             @default(Draft)
+  referenceNum          String?                 @db.VarChar(512)
+  caseTags              String?                 @db.VarChar(65535)
+  remakeCaseId          String?                 @db.VarChar(255)
+  scheduleTypeId        String?                 @db.VarChar(255)
+  shippingFlagtimeStamp DateTime?
+  remakeStatus          DateTime?
+  onHoldReason          String?                 @db.VarChar(65535)
+  holdResolveReason     String?                 @db.VarChar(65535)
+  holdActionDate        DateTime?
+  isCanceledFromOnHold  DateTime?
+  Attachments           Attachments[]
+  Dentist               Dentist                 @relation(fields: [dentistId], references: [id])
+  Patient               Patient?                @relation(fields: [patientId], references: [id])
+  Manufacture           Manufacture?            @relation(fields: [manufactureId], references: [id])
+  scheduleType          ScheduleType?           @relation(fields: [scheduleTypeId], references: [id])
+  User                  User?                   @relation(fields: [doctorId], references: [id])
+  Pan                   Pan?                    @relation(fields: [panNum], references: [id])
+  remakeCase            Case?                   @relation("CaseToRemakeCase", fields: [remakeCaseId], references: [id])
+  Case                  Case[]                  @relation("CaseToRemakeCase")
+  CaseAttachments       CaseAttachments[]
+  CaseDoctorPreferences CaseDoctorPreferences[]
+  CaseInstruction       CaseInstruction[]
+  CaseItem              CaseItem[]
+  CaseNotes             CaseNotes[]
+  Invoice               Invoice[]
+  CaseShipping          CaseShipping[]
+  CaseMasseageCenter    CaseMasseageCenter[]
+  CaseStatusHistory     CaseStatusHistory[]
+}
+
+model CaseTag {
+  id        String   @id @default(uuid())
+  tags      String   @unique() @db.VarChar(550)
+  createdAt DateTime @default(now())
+}
+
+model CaseStatusHistory {
+  id          String   @id @default(uuid())
+  caseId      String   @db.VarChar(255)
+  case        Case     @relation(fields: [caseId], references: [id])
+  processName String?  @db.VarChar(255)
+  status      String?  @db.VarChar(255)
+  createdAt   DateTime @default(now())
+}
+
+model CaseDoctorPreferences {
+  id        String    @id @default(uuid())
+  caseId    String    @db.VarChar(255)
+  note      String    @db.VarChar(255)
+  createdBy String    @db.VarChar(255)
+  updatedBy String    @db.VarChar(255)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  Case      Case      @relation(fields: [caseId], references: [id])
+}
+
+model Shades {
+  id                  String     @id @default(uuid())
+  shadeName           String
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+  deletedAt           DateTime?
+  caseItemsShadeOne   CaseItem[] @relation("CaseItemShadeOne")
+  caseItemsShadeThree CaseItem[] @relation("CaseItemShadeThree")
+  caseItemsShadeTwo   CaseItem[] @relation("CaseItemShadeTwo")
+  caseItemStumpShade  CaseItem[] @relation("CaseItemStumpShade")
+}
+
+model CaseItem {
+  id            String       @id @default(uuid())
+  caseId        String       @db.VarChar(255)
+  tooth         String?
+  itemId        String       @db.VarChar(255)
+  productTypeId String       @db.VarChar(255)
+  shadeType     String?      @db.VarChar(255)
+  shadeOne      String?      @db.VarChar(255)
+  shadeTwo      String?      @db.VarChar(255)
+  shadeThree    String?      @db.VarChar(255)
+  stumpShade    String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  Case          Case         @relation(fields: [caseId], references: [id])
+  shadeOneId    Shades?      @relation("CaseItemShadeOne", fields: [shadeOne], references: [id])
+  shadeThreeId  Shades?      @relation("CaseItemShadeThree", fields: [shadeThree], references: [id])
+  shadeTwoId    Shades?      @relation("CaseItemShadeTwo", fields: [shadeTwo], references: [id])
+  stumpShadeId  Shades?      @relation("CaseItemStumpShade", fields: [stumpShade], references: [id])
+  Item          Item         @relation(fields: [itemId], references: [id])
+  ProductType   ProductType  @relation(fields: [productTypeId], references: [id])
+  InvoiceItem   InvoiceItem?
+}
+
+model Manufacture {
+  id                 String               @id @default(uuid())
+  companyName        String               @db.VarChar(128)
+  phone              String?              @db.VarChar(128)
+  addressOne         String?              @db.VarChar(255)
+  addressTwo         String?              @db.VarChar(255)
+  city               String?              @db.VarChar(100)
+  state              String?              @db.VarChar(25)
+  postalCode         Int?
+  billingAddressOne  String?              @db.VarChar(255)
+  billingAddressTwo  String?              @db.VarChar(255)
+  billingCity        String?              @db.VarChar(255)
+  billingState       String?              @db.VarChar(255)
+  billingPostalCode  Int?
+  email              String               @unique @db.VarChar(255)
+  billingEmail       String?              @db.VarChar(255)
+  netTerms           String?              @db.VarChar(255)
+  deletedAt          DateTime?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime?
+  billingCountry     String?              @db.VarChar(255)
+  country            String?              @db.VarChar(255)
+  ManufacturePrice   ManufacturePrice[]
+  Materials          Materials[]
+  Case               Case[]
+  CaseMasseageCenter CaseMasseageCenter[]
+}
+
+model CaseNotes {
+  id        String    @id @default(uuid())
+  caseId    String    @db.VarChar(255)
+  note      String    @db.VarChar(5000)
+  createdBy String    @db.VarChar(255)
+  updatedBy String?   @db.VarChar(255)
+  createdAt DateTime? @default(now())
+  updatedAt DateTime?
+  deletedAt DateTime?
+  Case      Case      @relation(fields: [caseId], references: [id])
+  CreatedBy User      @relation("caseNotesCreatedBy", fields: [createdBy], references: [id])
+  UpdatedBy User?     @relation("caseNotesUpdatedBy", fields: [updatedBy], references: [id])
+}
+
+model CaseAttachments {
+  id          String        @id @default(uuid())
+  caseId      String        @db.VarChar(255)
+  createdBy   String?       @db.VarChar(255)
+  updatedBy   String?       @db.VarChar(255)
+  createdAt   DateTime?     @default(now())
+  updatedAt   DateTime?
+  deletedAt   DateTime?
+  category    String?       @db.VarChar(255)
+  count       Int?
+  Attachments Attachments[]
+  Case        Case          @relation(fields: [caseId], references: [id])
+}
+
+model CaseInstruction {
+  id        String    @id @default(uuid())
+  caseId    String    @db.VarChar(255)
+  note      String    @db.VarChar(5000)
+  createdBy String    @db.VarChar(255)
+  updatedBy String?   @db.VarChar(255)
+  createdAt DateTime? @default(now())
+  updatedAt DateTime?
+  deletedAt DateTime?
+  Case      Case      @relation(fields: [caseId], references: [id])
+  CreatedBy User      @relation("caseInstructionCreatedBy", fields: [createdBy], references: [id])
+  UpdatedBy User?     @relation("caseInstructionUpdatedBy", fields: [updatedBy], references: [id])
+}
+
+model Attachments {
+  id                String          @id @default(uuid())
+  caseAttachmentId  String          @db.VarChar(255)
+  caseId            String          @db.VarChar(255)
+  fileName          String          @db.VarChar(255)
+  fileType          String?         @db.VarChar(255)
+  fileUrl           String          @db.VarChar(255)
+  fileSize          String?         @db.VarChar(255)
+  customeProperties String?         @db.VarChar(255)
+  createdBy         String?         @db.VarChar(255)
+  updatedBy         String?         @db.VarChar(255)
+  createdAt         DateTime?       @default(now())
+  updatedAt         DateTime?
+  deletedAt         DateTime?
+  CaseAttachments   CaseAttachments @relation(fields: [caseAttachmentId], references: [id])
+  Case              Case            @relation(fields: [caseId], references: [id])
+}
+
+model Statement {
+  id                   String             @id
+  dentistId            String             @db.VarChar(255)
+  paymentReceived      Float
+  totalBalance         Float
+  statementStartDate   DateTime
+  statementEndDate     DateTime
+  createdAt            DateTime?          @default(now())
+  deletedAt            DateTime?
+  updatedAt            DateTime?
+  lastMonthBalance     Float?
+  previousMonthBalance Float?
+  creditAmount         Float?
+  debitAmount          Float?
+  statementId          String             @unique @default(dbgenerated("lpad((nextval('statement_seq'::regclass))::text, 4, '0'::text)"))
+  Dentist              Dentist            @relation(fields: [dentistId], references: [id])
+  StatementInvoice     StatementInvoice[]
+}
+
+model StatementInvoice {
+  id          String    @id
+  statementId String
+  invoiceId   String
+  createdAt   DateTime? @default(now())
+  deletedAt   DateTime?
+  updatedAt   DateTime?
+  Invoice     Invoice   @relation(fields: [invoiceId], references: [id])
+  Statement   Statement @relation(fields: [statementId], references: [id])
+}
+
+model ProductType {
+  id                       String                     @id @default(uuid())
+  deletedAt                DateTime?
+  createdAt                DateTime                   @default(now())
+  updatedAt                DateTime                   @updatedAt
+  name                     String                     @db.VarChar(255)
+  ProductType_DesignGroups ProductType_DesignGroups[]
+  CaseItem                 CaseItem[]
+}
+
+model ProductType_DesignGroups {
+  id            String      @id @default(uuid())
+  productTypeId String      @db.VarChar(255)
+  designGroupId String      @db.VarChar(255)
+  deletedAt     DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  DesignGroup   DesignGroup @relation(fields: [designGroupId], references: [id], onDelete: Cascade)
+  ProductType   ProductType @relation(fields: [productTypeId], references: [id], onDelete: Cascade)
+}
+
+model ManufacturePrice {
+  id            String      @id
+  manufactureId String      @db.VarChar(255)
+  itemId        String      @db.VarChar(255)
+  classicPrice  Float?
+  elitePrice    Float?
+  plusPrice     Float?
+  active        Boolean?    @default(true)
+  allowDiscount Boolean?    @default(true)
+  deletedAt     DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  Item          Item        @relation(fields: [itemId], references: [id])
+  Manufacture   Manufacture @relation(fields: [manufactureId], references: [id])
+}
+
+model Shipping {
+  id                 String               @id @default(uuid())
+  shipper            String               @db.VarChar(255)
+  trackingNum        String?              @db.VarChar(255)
+  barcode            String?              @db.VarChar(655536)
+  status             ShippingStatus?      @default(PRINTED)
+  estPickup          DateTime?
+  estDropOff         DateTime?
+  fromType           ShippingFromType
+  fromTypeId         String?              @db.VarChar(255)
+  toType             ShippingToType
+  toTypeId           String?              @db.VarChar(255)
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime?
+  deletedAt          DateTime?
+  CaseShipping       CaseShipping[]
+  ShippingCheckInOut ShippingCheckInOut[]
+}
+
+model ShippingMethod {
+  id        String      @id @default(uuid())
+  name      String?     @db.VarChar(255)
+  price     Float?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  DebitNote DebitNote[]
+}
+
+model CaseShipping {
+  id          String    @id @default(uuid())
+  shippingId  String    @db.VarChar(255)
+  trackingNum String?   @db.VarChar(255)
+  caseId      String    @db.VarChar(255)
+  createdAt   DateTime?
+  Shipping    Shipping  @relation(fields: [shippingId], references: [id])
+  Case        Case      @relation(fields: [caseId], references: [id])
+}
+
+model ShippingCheckInOut {
+  id           String    @id @default(uuid())
+  shippingId   String    @db.VarChar(255)
+  shippingType String    @db.VarChar(255)
+  userId       String    @db.VarChar(255)
+  createdAt    DateTime?
+  Shipping     Shipping  @relation(fields: [shippingId], references: [id])
+}
+
+model Preference {
+  id                String              @id @default(uuid())
+  name              String              @db.VarChar(255)
+  type              PreferenceType?     @default(CROWN_BRIDGE)
+  status            Boolean?            @default(true)
+  dropdownValue     String?             @db.VarChar(255)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime?           @updatedAt
+  deletedAt         DateTime?
+  Preference_doctor Preference_doctor[]
+}
+
+model Preference_doctor {
+  id           String      @id @default(uuid())
+  preferenceId String?     @db.VarChar(255)
+  doctorId     String?     @db.VarChar(255)
+  value        String      @db.VarChar(255)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime?   @updatedAt
+  deletedAt    DateTime?
+  Preference   Preference? @relation(fields: [preferenceId], references: [id])
+  User         User?       @relation(fields: [doctorId], references: [id])
+}
+
+model CaseMasseageCenter {
+  id            String       @id @default(uuid())
+  to            String       @db.VarChar(255)
+  message       String       @db.VarChar(65536)
+  caseId        String       @db.VarChar(255)
+  fromType      String       @db.VarChar(65536)
+  fromTypeId    String       @db.VarChar(255)
+  dentistId     String?      @db.VarChar(255)
+  manufactureId String?      @db.VarChar(255)
+  createdAt     DateTime?    @default(now())
+  deletedAt     DateTime?
+  Case          Case         @relation(fields: [caseId], references: [id])
+  Dentist       Dentist?     @relation(fields: [dentistId], references: [id])
+  Manufacture   Manufacture? @relation(fields: [manufactureId], references: [id])
+}
+
+model Notification {
+  id                 String    @id @default(uuid())
+  subject            String    @db.VarChar(255)
+  message            String?   @db.VarChar(65536)
+  modelType          String    @db.VarChar(255)
+  modelId            String?   @db.VarChar(255)
+  notificationType   String?   @db.VarChar(255)
+  notificationTypeId String?   @db.VarChar(255)
+  isRead             Boolean?  @default(false)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime? @updatedAt
+}
+
+model CreditNote {
+  id         String       @id @default(uuid())
+  creditId   String?      @db.VarChar(255)
+  dentistId  String?      @db.VarChar(255)
+  note       String?      @db.VarChar(255)
+  creditDate DateTime?
+  creditPaid creditStatus @default(UNPAID)
+  createdBy  String       @db.VarChar(255)
+  updatedBy  String?      @db.VarChar(255)
+  amount     Float?
+  paymentId  String?      @db.VarChar(255)
+  createdAt  DateTime?    @default(now())
+  updatedAt  DateTime?
+  deletedAt  DateTime?
+  CreatedBy  User         @relation("creditNoteCreatedBy", fields: [createdBy], references: [id])
+  UpdatedBy  User?        @relation("creditNoteUpdatedBy", fields: [updatedBy], references: [id])
+  Dentist    Dentist?     @relation(fields: [dentistId], references: [id])
+  Payment    Payment?     @relation(fields: [paymentId], references: [id])
+}
+
+model DebitNote {
+  id                 String          @id @default(uuid())
+  debitId            String?         @db.VarChar(255)
+  dentistId          String?         @db.VarChar(255)
+  debitPaid          debitStatus     @default(UNPAID)
+  shippingMethodId   String?         @db.VarChar(255) // Corrected field name
+  shippingMethodName String?         @db.VarChar(255) // Corrected field name
+  trackingNumber     String?         @db.VarChar(255)
+  note               String?         @db.VarChar(255)
+  createdBy          String          @db.VarChar(255)
+  updatedBy          String?         @db.VarChar(255)
+  amount             Float?
+  paymentId          String?         @db.VarChar(255)
+  createdAt          DateTime?       @default(now())
+  updatedAt          DateTime?
+  deletedAt          DateTime?
+  ShippingMethod     ShippingMethod? @relation(fields: [shippingMethodId], references: [id]) // Corrected relation field
+  CreatedBy          User            @relation("debitNoteCreatedBy", fields: [createdBy], references: [id])
+  UpdatedBy          User?           @relation("debitNoteUpdatedBy", fields: [updatedBy], references: [id])
+  Dentist            Dentist?        @relation(fields: [dentistId], references: [id])
+  Payment            Payment?        @relation(fields: [paymentId], references: [id])
+}
+
+model PaymentMetadata {
+  id             String   @id @default(uuid())
+  createdAt      DateTime @default(now())
+  paymentContent String   @db.VarChar(65536)
+}
+
+enum PreferenceType {
+  CROWN_BRIDGE
+  REMOVABLE_APPLIANCE
+  IMPLANT
+}
+
+enum debitStatus {
+  UNPAID
+  PAID
+  REQUESTED
+  PROCESSING
+  MERGED
+}
+
+enum creditStatus {
+  UNPAID
+  PAID
+  REQUESTED
+  PROCESSING
+  MERGED
+}
+
+enum shippingAddressModel {
+  REGISTER
+  BILLING
+}
+
+enum ModelType {
+  USER
+  DENTIST
+  MANUFACTURE
+}
+
+enum InvoiceStatusType {
+  OPEN
+  PAID
+  PARTIAL_PAID
+  DRAFT
+}
+
+enum PatientGenderType {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum ShippingFromType {
+  LAB
+  DENTIST
+  MANUFACTURE
+}
+
+enum ShippingToType {
+  LAB
+  DENTIST
+  MANUFACTURE
+}
+
+enum ShippingStatus {
+  PRINTED
+  READY_FOR_PICKUP
+  IN_ROUTE
+  DELAYED
+  DELIVERED
+}
+
+enum CaseStatus {
+  Draft
+  IntransitfromClient
+  DetailsPending
+  PendingLabQuestion
+  CheckIn
+  RemakeRequest
+  IntransittoManufacturingDept
+  ReceivedbyManufacturingDept
+  InManufacturing
+  ReadyforShipmenttoNextDentalLab
+  IntransitfromManufacturingDept
+  ReceivedfromManufacturingDept
+  InQC
+  PendingClientShipment
+  InTransitToClient
+  OnHold
+  Cancelled
+  DuplicateCase
+  LateCase
+  PendingManufacturingDepartmentShipment
+  PendingForNextDentalLabshipment
+  Completed
+}
+
+enum User_Status {
+  ACTIVE
+  INACTIVE
+}
+
+enum Dentist_Status {
+  ACTIVE
+  INACTIVE
+  SUSPEND
+}
