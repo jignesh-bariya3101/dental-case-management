@@ -2,15 +2,15 @@ version: '3.8'
 services:
   app:
     build: .
-    container_name: next-dental-lab-backend-case-service
+    container_name: dental-backend-case-service
     ports:
       - 8002:8002
     tty: true
     restart: unless-stopped
     stdin_open: true
     environment:
-      - DATABASE_URL=postgresql://postgres:jignesh123@db:5432/nextdental
-      - USER_SERVER_BACKEND=http://52.14.102.237:8000
+      - DATABASE_URL=postgresql://postgres:jignesh123@db:5432/dental-case
+      - USER_SERVER_BACKEND=http:/localhost:8000
     volumes:
       - .:/usr/src/app
       - /usr/src/app/node_modules

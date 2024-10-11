@@ -1,4 +1,4 @@
-# Next Dental Lab - Backend - Case Services
+# Backend - Case Services
 
 ## Getting started
 
